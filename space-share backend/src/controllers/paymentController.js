@@ -138,6 +138,18 @@ const verifyPayment = async (req, res, next) => {
       return errorResponse(res, 'Payment verification failed: Invalid signature', 400);
     }
 
+    // If booking was cancelled (e.g. hold expired), do NOT mark confirmed. Log for refund.
+    if (booking.status === 'cancelled') {
+      console.error(
+        `[REFUND NEEDED] verifyPayment: booking ${booking.id} is cancelled. Payment ID: ${razorpay_payment_id}, Order ID: ${razorpay_order_id}, Amount: ${booking.total_amount}. Refund required.`
+      );
+      return errorResponse(
+        res,
+        'Booking has been cancelled due to expired hold. Payment received and logged for refund.',
+        400
+      );
+    }
+
     // Signature valid — mark booking as paid
     const { data: updatedBooking, error: updateError } = await supabaseAdmin
       .from('bookings')
@@ -210,20 +222,32 @@ const webhook = async (req, res, next) => {
       // Find the booking by razorpay_order_id
       const { data: booking } = await supabaseAdmin
         .from('bookings')
-        .select('id, payment_status')
+        .select('id, payment_status, status, total_amount')
         .eq('razorpay_order_id', razorpayOrderId)
         .maybeSingle();
 
-      if (booking && booking.payment_status !== 'paid') {
-        await supabaseAdmin
-          .from('bookings')
-          .update({
-            payment_status: 'paid',
-            payment_id: razorpayPaymentId,
-            status: 'confirmed',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', booking.id);
+      if (booking) {
+        if (booking.status === 'cancelled') {
+          console.error(
+            `[REFUND NEEDED] webhook payment.captured: booking ${booking.id} is cancelled. Payment ID: ${razorpayPaymentId}, Order ID: ${razorpayOrderId}, Amount: ${payment.amount ? payment.amount / 100 : booking.total_amount}. Refund required.`
+          );
+          return res.status(200).json({
+            success: false,
+            message: 'Booking has been cancelled due to expired hold. Payment logged for refund.',
+          });
+        }
+
+        if (booking.payment_status !== 'paid') {
+          await supabaseAdmin
+            .from('bookings')
+            .update({
+              payment_status: 'paid',
+              payment_id: razorpayPaymentId,
+              status: 'confirmed',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', booking.id);
+        }
       }
     }
 

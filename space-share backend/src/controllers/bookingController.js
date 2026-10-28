@@ -88,6 +88,9 @@ const createBooking = async (req, res, next) => {
       .single();
 
     if (insertError) {
+      if (insertError.code === '23P01') {
+        return errorResponse(res, 'Slot already booked', 409);
+      }
       return errorResponse(res, 'Failed to create booking', 500, insertError.message);
     }
 

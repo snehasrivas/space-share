@@ -269,6 +269,201 @@ async function run() {
     assert.strictEqual(ltCalls[0].args[0], 'hold_expires_at', 'lt() must target hold_expires_at');
   });
 
+  // ─── TEST 3 ────────────────────────────────────────────────────────
+  // createBooking: If insert fails with Postgres code 23P01 (exclusion
+  // constraint violation), must return 409 "Slot already booked" (not 500).
+  // ────────────────────────────────────────────────────────────────────
+  await test('createBooking returns 409 "Slot already booked" on Postgres 23P01 exclusion violation', async () => {
+    const venueId = 'venue-exclusion-test';
+    const renterId = 'renter-exclusion-test';
+
+    mockFromSequence([
+      // 0 – venue lookup
+      { data: { id: venueId, owner_id: 'owner-xyz', is_active: true, is_verified: true }, error: null },
+      // 1 – cancel expired holds
+      { data: null, error: null },
+      // 2 – overlap check (simulate race condition where JS check passed)
+      { data: [], error: null },
+      // 3 – insert fails with Postgres 23P01 exclusion violation
+      {
+        data: null,
+        error: {
+          code: '23P01',
+          message: 'conflicting key value violates exclusion constraint "no_overlapping_bookings"',
+        },
+      },
+    ]);
+
+    const { createBooking } = require('../src/controllers/bookingController');
+
+    const req = mockReq({
+      user: { id: renterId, role: 'renter' },
+      body: {
+        venue_id: venueId,
+        booking_date: '2026-11-15',
+        start_time: '14:00',
+        end_time: '16:00',
+        total_amount: 2500,
+      },
+    });
+
+    const res = mockRes();
+    await createBooking(req, res, (err) => { throw err; });
+
+    assert.strictEqual(res.statusCode, 409, `Expected 409 for 23P01 error, got ${res.statusCode}`);
+    assert.strictEqual(res.body.success, false, 'Response must have success: false');
+    assert.strictEqual(res.body.message, 'Slot already booked', `Expected message "Slot already booked", got "${res.body.message}"`);
+  });
+
+  // ─── TEST 4 ────────────────────────────────────────────────────────
+  // verifyPayment: If booking is cancelled (expired hold), do NOT mark
+  // confirmed. Return 400 error and log for refund.
+  // ────────────────────────────────────────────────────────────────────
+  await test('verifyPayment on cancelled booking returns 400, does not confirm, logs refund', async () => {
+    const bookingId = 'booking-cancelled-verify';
+    const userId = 'user-cancelled-verify';
+    const orderId = 'order_cancelled_123';
+    const paymentId = 'pay_cancelled_123';
+
+    // Compute legitimate HMAC signature for this order & payment
+    const validSignature = crypto
+      .createHmac('sha256', TEST_RAZORPAY_SECRET)
+      .update(`${orderId}|${paymentId}`)
+      .digest('hex');
+
+    mockFromSequence([
+      {
+        data: {
+          id: bookingId,
+          renter_id: userId,
+          venue_id: 'venue-1',
+          razorpay_order_id: orderId,
+          payment_status: 'unpaid',
+          status: 'cancelled', // Hold expired and was cancelled!
+          total_amount: 5000,
+        },
+        error: null,
+      },
+    ]);
+
+    const { verifyPayment } = require('../src/controllers/paymentController');
+
+    const req = mockReq({
+      user: { id: userId, role: 'renter' },
+      body: {
+        razorpay_order_id: orderId,
+        razorpay_payment_id: paymentId,
+        razorpay_signature: validSignature,
+        booking_id: bookingId,
+      },
+    });
+
+    // Capture console.error to check refund log
+    const loggedErrors = [];
+    const originalConsoleError = console.error;
+    console.error = (...args) => { loggedErrors.push(args.join(' ')); };
+
+    const res = mockRes();
+    try {
+      await verifyPayment(req, res, (err) => { throw err; });
+    } finally {
+      console.error = originalConsoleError;
+    }
+
+    assert.strictEqual(res.statusCode, 400, `Expected 400, got ${res.statusCode}`);
+    assert.strictEqual(res.body.success, false, 'Response must have success: false');
+    assert.ok(
+      res.body.message.toLowerCase().includes('cancelled') ||
+      res.body.message.toLowerCase().includes('refund'),
+      `Expected message referencing cancellation or refund, got: "${res.body.message}"`
+    );
+
+    // Ensure NO update was made (fromCalls only had 1 SELECT, no UPDATE)
+    assert.strictEqual(fromCalls.length, 1, 'Must NOT update or confirm cancelled booking');
+
+    // Ensure refund was logged
+    const hasRefundLog = loggedErrors.some((log) => log.includes('REFUND') && log.includes(bookingId));
+    assert.ok(hasRefundLog, 'Must log refund needed with booking ID');
+  });
+
+  // ─── TEST 5 ────────────────────────────────────────────────────────
+  // webhook payment.captured: If booking is cancelled (expired hold), do
+  // NOT mark confirmed. Return 200 (acknowledge so Razorpay stops retry)
+  // and log for refund.
+  // ────────────────────────────────────────────────────────────────────
+  await test('webhook payment.captured on cancelled booking returns 200, does not confirm, logs refund', async () => {
+    const bookingId = 'booking-cancelled-webhook';
+    const orderId = 'order_webhook_cancelled';
+    const paymentId = 'pay_webhook_cancelled';
+    const webhookSecret = 'test_webhook_secret_hmac';
+    configModule.config.razorpayWebhookSecret = webhookSecret;
+
+    const payloadObj = {
+      event: 'payment.captured',
+      payload: {
+        payment: {
+          entity: {
+            id: paymentId,
+            order_id: orderId,
+            amount: 500000,
+          },
+        },
+      },
+    };
+
+    const rawBody = Buffer.from(JSON.stringify(payloadObj));
+    const validSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawBody)
+      .digest('hex');
+
+    mockFromSequence([
+      {
+        data: {
+          id: bookingId,
+          payment_status: 'unpaid',
+          status: 'cancelled',
+          total_amount: 5000,
+        },
+        error: null,
+      },
+    ]);
+
+    const { webhook } = require('../src/controllers/paymentController');
+
+    const req = mockReq({
+      headers: { 'x-razorpay-signature': validSignature },
+      body: payloadObj,
+      rawBody: rawBody,
+    });
+
+    const loggedErrors = [];
+    const originalConsoleError = console.error;
+    console.error = (...args) => { loggedErrors.push(args.join(' ')); };
+
+    const res = mockRes();
+    try {
+      await webhook(req, res, (err) => { throw err; });
+    } finally {
+      console.error = originalConsoleError;
+    }
+
+    assert.strictEqual(res.statusCode, 200, `Expected 200, got ${res.statusCode}`);
+    assert.strictEqual(res.body.success, false, 'Response must have success: false');
+    assert.ok(
+      res.body.message.toLowerCase().includes('cancelled') ||
+      res.body.message.toLowerCase().includes('refund'),
+      `Expected message referencing cancellation or refund, got: "${res.body.message}"`
+    );
+
+    // Ensure NO update was made (fromCalls only had 1 SELECT, no UPDATE)
+    assert.strictEqual(fromCalls.length, 1, 'Must NOT update or confirm cancelled booking');
+
+    // Ensure refund was logged
+    const hasRefundLog = loggedErrors.some((log) => log.includes('REFUND') && log.includes(bookingId));
+    assert.ok(hasRefundLog, 'Must log refund needed with booking ID');
+  });
+
   // ── Report ─────────────────────────────────────────────────────────
   console.log('\n=========================================');
   console.log('  Booking & Payment Security Tests');
