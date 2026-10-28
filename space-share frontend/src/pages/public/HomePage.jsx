@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import VenueCard from '../../components/venues/VenueCard';
 import { VenueCardSkeleton } from '../../components/common/LoadingSkeleton';
 
@@ -20,6 +21,7 @@ const VENUE_TYPES = [
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [featuredVenues, setFeaturedVenues] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +50,12 @@ const HomePage = () => {
     const query = new URLSearchParams();
     if (searchParams.city) query.append('city', searchParams.city);
     if (searchParams.search) query.append('search', searchParams.search);
-    navigate(`/venues?${query.toString()}`);
+    const targetUrl = `/venues?${query.toString()}`;
+    if (!user) {
+      navigate(`/login?redirect=${encodeURIComponent(targetUrl)}`);
+    } else {
+      navigate(targetUrl);
+    }
   };
 
   return (
@@ -155,7 +162,7 @@ const HomePage = () => {
             </h2>
           </div>
           <Link
-            to="/venues"
+            to={user ? "/venues" : "/login?redirect=/venues"}
             className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:text-primary-container transition"
           >
             <span>Browse All Venues</span>
@@ -203,7 +210,7 @@ const HomePage = () => {
             {VENUE_TYPES.map((type) => (
               <Link
                 key={type.id}
-                to={`/venues?search=${type.id}`}
+                to={user ? `/venues?search=${type.id}` : `/login?redirect=${encodeURIComponent(`/venues?search=${type.id}`)}`}
                 className="group relative rounded-2xl overflow-hidden aspect-[4/3] shadow-card hover:shadow-floating transition"
               >
                 <img

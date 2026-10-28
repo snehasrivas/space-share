@@ -31,12 +31,28 @@ const App = () => {
 
       <main className="flex-grow">
         <Routes>
-          {/* Public Routes */}
+          {/* Public / Landing Routes */}
           <Route path="/" element={<HomePage />} />
-          <Route path="/venues" element={<BrowseVenuesPage />} />
-          <Route path="/venues/:id" element={<VenueDetailPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
+
+          {/* Venues (Requires Login/Signup) */}
+          <Route
+            path="/venues"
+            element={
+              <ProtectedRoute>
+                <BrowseVenuesPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/venues/:id"
+            element={
+              <ProtectedRoute>
+                <VenueDetailPage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Renter Protected Routes */}
           <Route

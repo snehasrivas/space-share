@@ -33,48 +33,42 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Desktop Navigation Links */}
-        <nav className="hidden md:flex items-center gap-8">
-          <NavLink to="/venues" className={navLinkClass}>
-            Explore Venues
-          </NavLink>
-
-          {isRenter && (
-            <NavLink to="/my-bookings" className={navLinkClass}>
-              My Bookings
+        {/* Desktop Navigation Links (Only visible after login) */}
+        {user && (
+          <nav className="hidden md:flex items-center gap-8">
+            <NavLink to="/venues" className={navLinkClass}>
+              Explore Venues
             </NavLink>
-          )}
 
-          {isOwner && (
-            <>
-              <NavLink to="/owner/dashboard" className={navLinkClass}>
-                My Venues
+            {isRenter && (
+              <NavLink to="/my-bookings" className={navLinkClass}>
+                My Bookings
               </NavLink>
-              <NavLink to="/owner/bookings" className={navLinkClass}>
-                Bookings Received
-              </NavLink>
-            </>
-          )}
+            )}
 
-          {isAdmin && (
-            <NavLink to="/admin/verifications" className={navLinkClass}>
-              Verification Queue
-            </NavLink>
-          )}
-        </nav>
+            {isOwner && (
+              <>
+                <NavLink to="/owner/dashboard" className={navLinkClass}>
+                  My Venues
+                </NavLink>
+                <NavLink to="/owner/bookings" className={navLinkClass}>
+                  Bookings Received
+                </NavLink>
+              </>
+            )}
+
+            {isAdmin && (
+              <NavLink to="/admin/verifications" className={navLinkClass}>
+                Verification Queue
+              </NavLink>
+            )}
+          </nav>
+        )}
 
         {/* Right Action CTA & Auth Buttons */}
         <div className="hidden sm:flex items-center gap-3 shrink-0">
-          {/* List Your Space (Owner CTA) */}
-          {!user ? (
-            <Link
-              to="/signup?role=owner"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-primary/30 text-primary font-semibold text-xs hover:bg-primary/5 transition"
-            >
-              <span className="material-symbols-outlined text-[16px]">add_business</span>
-              List Your Space
-            </Link>
-          ) : isOwner ? (
+          {/* Add Venue button (Only visible after login as Owner) */}
+          {user && isOwner && (
             <Link
               to="/owner/venues/new"
               className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-primary-container text-white font-semibold text-xs hover:bg-primary transition shadow-sm"
@@ -82,7 +76,7 @@ const Navbar = () => {
               <span className="material-symbols-outlined text-[16px]">add_circle</span>
               Add Venue
             </Link>
-          ) : null}
+          )}
 
           {/* User profile / Login dropdown */}
           {!user ? (
@@ -228,58 +222,62 @@ const Navbar = () => {
       {/* Mobile Drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-surface-container-lowest border-b border-outline-variant/30 px-6 py-5 space-y-4">
-          <NavLink
-            to="/venues"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block text-base font-semibold py-2 text-on-surface"
-          >
-            Explore Venues
-          </NavLink>
-
-          {isRenter && (
-            <NavLink
-              to="/my-bookings"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block text-base font-semibold py-2 text-on-surface"
-            >
-              My Bookings
-            </NavLink>
-          )}
-
-          {isOwner && (
+          {user && (
             <>
               <NavLink
-                to="/owner/dashboard"
+                to="/venues"
                 onClick={() => setMobileMenuOpen(false)}
                 className="block text-base font-semibold py-2 text-on-surface"
               >
-                My Venues
+                Explore Venues
               </NavLink>
-              <NavLink
-                to="/owner/venues/new"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block text-base font-semibold py-2 text-on-surface"
-              >
-                Add New Venue
-              </NavLink>
-              <NavLink
-                to="/owner/bookings"
-                onClick={() => setMobileMenuOpen(false)}
-                className="block text-base font-semibold py-2 text-on-surface"
-              >
-                Bookings Received
-              </NavLink>
-            </>
-          )}
 
-          {isAdmin && (
-            <NavLink
-              to="/admin/verifications"
-              onClick={() => setMobileMenuOpen(false)}
-              className="block text-base font-semibold py-2 text-on-surface"
-            >
-              Verification Queue
-            </NavLink>
+              {isRenter && (
+                <NavLink
+                  to="/my-bookings"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-base font-semibold py-2 text-on-surface"
+                >
+                  My Bookings
+                </NavLink>
+              )}
+
+              {isOwner && (
+                <>
+                  <NavLink
+                    to="/owner/dashboard"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-base font-semibold py-2 text-on-surface"
+                  >
+                    My Venues
+                  </NavLink>
+                  <NavLink
+                    to="/owner/venues/new"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-base font-semibold py-2 text-on-surface"
+                  >
+                    Add New Venue
+                  </NavLink>
+                  <NavLink
+                    to="/owner/bookings"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block text-base font-semibold py-2 text-on-surface"
+                  >
+                    Bookings Received
+                  </NavLink>
+                </>
+              )}
+
+              {isAdmin && (
+                <NavLink
+                  to="/admin/verifications"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block text-base font-semibold py-2 text-on-surface"
+                >
+                  Verification Queue
+                </NavLink>
+              )}
+            </>
           )}
 
           <div className="pt-4 border-t border-outline-variant/20 flex flex-col gap-2">
