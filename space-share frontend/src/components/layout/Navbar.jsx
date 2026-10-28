@@ -3,7 +3,7 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const Navbar = () => {
-  const { user, profile, role, isOwner, isAdmin, isRenter, logout } = useAuth();
+  const { user, profile, role, isOwner, isAdmin, isRenter, isGuest, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
@@ -112,7 +112,7 @@ const Navbar = () => {
                     {profile?.full_name || user.email?.split('@')[0]}
                   </p>
                   <p className="text-[10px] uppercase font-semibold text-primary tracking-wider leading-tight">
-                    {role}
+                    {isGuest ? 'Guest Mode' : role}
                   </p>
                 </div>
                 <span className="material-symbols-outlined text-[18px] text-on-surface-variant">
@@ -131,8 +131,8 @@ const Navbar = () => {
                       {profile?.full_name || 'User'}
                     </p>
                     <p className="text-xs text-on-surface-variant truncate">{user.email}</p>
-                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-secondary-container text-on-secondary-container">
-                      Role: {role}
+                    <span className="inline-block mt-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-tertiary-container/15 text-tertiary">
+                      {isGuest ? 'Guest Mode (All Unlocked)' : `Role: ${role}`}
                     </span>
                   </div>
 
@@ -193,13 +193,30 @@ const Navbar = () => {
                   )}
 
                   <div className="border-t border-outline-variant/20 mt-1 pt-1">
-                    <button
-                      onClick={handleLogout}
-                      className="w-full text-left flex items-center gap-2 px-4 py-2.5 text-sm text-error hover:bg-error/10 transition"
-                    >
-                      <span className="material-symbols-outlined text-[18px]">logout</span>
-                      Log Out
-                    </button>
+                    {isGuest ? (
+                      <div className="px-3 py-2 space-y-1.5">
+                        <Link
+                          to="/login"
+                          className="w-full text-center block py-1.5 rounded-lg border border-outline-variant/40 text-xs font-semibold text-on-surface hover:bg-secondary-container transition"
+                        >
+                          Sign In to Real Account
+                        </Link>
+                        <Link
+                          to="/signup"
+                          className="w-full text-center block py-1.5 rounded-lg bg-primary text-xs font-semibold text-white hover:bg-primary-container transition"
+                        >
+                          Create New Account
+                        </Link>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={handleLogout}
+                        className="w-full text-left flex items-center gap-2 px-4 py-2.5 text-sm text-error hover:bg-error/10 transition cursor-pointer"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">logout</span>
+                        Log Out
+                      </button>
+                    )}
                   </div>
                 </div>
               )}

@@ -24,13 +24,16 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
+      const hadToken = Boolean(localStorage.getItem('token'));
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       localStorage.removeItem('profile');
-      // Redirect to login if not already there and on a protected path
-      const currentPath = window.location.pathname;
-      if (!currentPath.includes('/login') && !currentPath.includes('/signup')) {
-        window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+      // Only redirect if a real token expired, not when browsing in guest mode
+      if (hadToken) {
+        const currentPath = window.location.pathname;
+        if (!currentPath.includes('/login') && !currentPath.includes('/signup')) {
+          window.location.href = `/login?redirect=${encodeURIComponent(currentPath)}`;
+        }
       }
     }
     return Promise.reject(error);

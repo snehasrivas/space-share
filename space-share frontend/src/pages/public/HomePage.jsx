@@ -50,12 +50,7 @@ const HomePage = () => {
     const query = new URLSearchParams();
     if (searchParams.city) query.append('city', searchParams.city);
     if (searchParams.search) query.append('search', searchParams.search);
-    const targetUrl = `/venues?${query.toString()}`;
-    if (!user) {
-      navigate(`/login?redirect=${encodeURIComponent(targetUrl)}`);
-    } else {
-      navigate(targetUrl);
-    }
+    navigate(`/venues?${query.toString()}`);
   };
 
   return (
@@ -162,7 +157,7 @@ const HomePage = () => {
             </h2>
           </div>
           <Link
-            to={user ? "/venues" : "/login?redirect=/venues"}
+            to="/venues"
             className="inline-flex items-center gap-1 text-sm font-bold text-primary hover:text-primary-container transition"
           >
             <span>Browse All Venues</span>
@@ -191,7 +186,7 @@ const HomePage = () => {
               Be the first to list a verified party lawn, terrace, or farmhouse on SpaceShare.
             </p>
             <Link
-              to="/signup?role=owner"
+              to="/owner/venues/new"
               className="inline-flex items-center gap-2 mt-4 px-5 py-2.5 rounded-xl bg-primary text-white font-semibold text-xs hover:bg-primary-container transition"
             >
               List Your Venue
@@ -210,7 +205,7 @@ const HomePage = () => {
             {VENUE_TYPES.map((type) => (
               <Link
                 key={type.id}
-                to={user ? `/venues?search=${type.id}` : `/login?redirect=${encodeURIComponent(`/venues?search=${type.id}`)}`}
+                to={`/venues?search=${type.id}`}
                 className="group relative rounded-2xl overflow-hidden aspect-[4/3] shadow-card hover:shadow-floating transition"
               >
                 <img

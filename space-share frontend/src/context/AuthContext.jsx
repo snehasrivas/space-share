@@ -3,29 +3,46 @@ import api from '../services/api';
 
 const AuthContext = createContext(null);
 
+const DEFAULT_GUEST_USER = {
+  id: 'guest-explorer-id',
+  email: 'guest@spaceshare.in',
+  user_metadata: {
+    full_name: 'Guest Explorer',
+    role: 'owner',
+  },
+};
+
+const DEFAULT_GUEST_PROFILE = {
+  id: 'guest-explorer-id',
+  full_name: 'Guest Explorer',
+  email: 'guest@spaceshare.in',
+  role: 'owner',
+  avatar_url: '',
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem('user');
-      return saved ? JSON.parse(saved) : null;
+      return saved ? JSON.parse(saved) : DEFAULT_GUEST_USER;
     } catch {
-      return null;
+      return DEFAULT_GUEST_USER;
     }
   });
 
   const [profile, setProfile] = useState(() => {
     try {
       const saved = localStorage.getItem('profile');
-      return saved ? JSON.parse(saved) : null;
+      return saved ? JSON.parse(saved) : DEFAULT_GUEST_PROFILE;
     } catch {
-      return null;
+      return DEFAULT_GUEST_PROFILE;
     }
   });
 
   const [token, setToken] = useState(() => localStorage.getItem('token') || null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  // Re-fetch profile on initial mount if token exists
+  // If real token exists, re-fetch profile on initial mount
   useEffect(() => {
     const fetchMe = async () => {
       const storedToken = localStorage.getItem('token');
@@ -44,8 +61,7 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('profile', JSON.stringify(fetchedProfile));
         }
       } catch (err) {
-        console.error('Failed to restore session:', err);
-        // If 401 or failed, interceptor handles clearing
+        console.warn('Live session check failed, falling back to guest mode:', err);
       } finally {
         setLoading(false);
       }
@@ -108,8 +124,8 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('user');
     localStorage.removeItem('profile');
     setToken(null);
-    setUser(null);
-    setProfile(null);
+    setUser(DEFAULT_GUEST_USER);
+    setProfile(DEFAULT_GUEST_PROFILE);
   };
 
   const updateProfileState = (updatedProfile) => {
@@ -117,10 +133,13 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('profile', JSON.stringify(updatedProfile));
   };
 
-  const role = profile?.role || 'renter';
-  const isOwner = role === 'owner';
-  const isAdmin = role === 'admin';
-  const isRenter = role === 'renter';
+  const isGuest = !token || user?.id === 'guest-explorer-id';
+  const role = profile?.role || 'owner';
+
+  // In guest mode, unlock everything so user can freely explore all pages
+  const isOwner = isGuest || role === 'owner';
+  const isRenter = isGuest || role === 'renter';
+  const isAdmin = isGuest || role === 'admin';
 
   return (
     <AuthContext.Provider
@@ -130,6 +149,7 @@ export const AuthProvider = ({ children }) => {
         token,
         loading,
         role,
+        isGuest,
         isOwner,
         isAdmin,
         isRenter,

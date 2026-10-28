@@ -3,7 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, isGuest } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -15,6 +15,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
         </div>
       </div>
     );
+  }
+
+  // In Guest Mode, allow viewing all pages freely without login
+  if (isGuest) {
+    return children;
   }
 
   if (!user) {
