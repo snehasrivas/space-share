@@ -1,0 +1,11 @@
+{
+  "name": "space-share-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix \"space-share backend\"\" \"npm run dev --prefix \"space-share frontend\"\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.0"
+  }
+}

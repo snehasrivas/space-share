@@ -1,0 +1,11 @@
+{
+  "title": "SpaceShare — Event Venues",
+  "description": "Discover and book verified event spaces across India.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
