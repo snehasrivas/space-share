@@ -8,9 +8,9 @@ const { config } = require('./src/config/config');
 
 const PORT = config.port || 5000;
 
+
 // Start Server
 const server = app.listen(PORT, () => {
-  console.log('--------------------------------------------------');
   console.log('🚀 Space Share Backend Server is Live!');
   console.log(`📡 Port:   ${PORT}`);
   console.log(`🛠️ Mode:   ${process.env.NODE_ENV || 'development'}`);
@@ -37,7 +37,5 @@ process.on('unhandledRejection', (err) => {
 
 process.on('uncaughtException', (err) => {
   console.error('❌ Uncaught Exception Details:', err);
-    process.exit(1);
+  process.exit(1);
 });
-
-module.exports = server;
