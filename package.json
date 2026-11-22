@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix \"space-share backend\"\" \"npm run dev --prefix \"space-share frontend\"\""
+    "dev": "concurrently -n \"backend,frontend\" -c \"blue,magenta\" \"npm --prefix \\\"space-share backend\\\" run dev\" \"npm --prefix \\\"space-share frontend\\\" run dev\""
   },
   "devDependencies": {
     "concurrently": "^8.2.0"

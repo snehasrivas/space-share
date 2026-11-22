@@ -48,4 +48,8 @@ router.get('/:id/availability', getVenueAvailability);
 router.post('/:id/availability', requireAuth, addVenueAvailability);
 router.delete('/:id/availability/:availabilityId', requireAuth, deleteVenueAvailability);
 
+// Reviews & Ratings
+const reviewRoutes = require('./reviewRoutes');
+router.use('/:id/reviews', reviewRoutes);
+
 module.exports = router;

@@ -271,3 +271,95 @@ CREATE POLICY renter_insert_booking ON bookings FOR INSERT WITH CHECK (
   AND EXISTS (SELECT 1 FROM venues WHERE venues.id = bookings.venue_id
     AND venues.is_verified = true AND venues.is_active = true));
 CREATE POLICY renter_view_own_bookings ON bookings FOR SELECT USING (auth.uid() = renter_id);
+
+-- ---------------------------------------------------------------------------
+-- REVIEWS & RATINGS (ratings, aspect breakdown, comments, host replies)
+-- ---------------------------------------------------------------------------
+CREATE TABLE reviews (
+  id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  venue_id         UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+  user_id          UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  author_name      TEXT NOT NULL,
+  author_city      TEXT DEFAULT 'India',
+  rating           NUMERIC(2,1) NOT NULL CHECK (rating >= 1.0 AND rating <= 5.0),
+  event_type       TEXT NOT NULL DEFAULT 'Celebration',
+  guest_count      INTEGER DEFAULT 100,
+  comment          TEXT NOT NULL,
+  cleanliness      NUMERIC(2,1) DEFAULT 5.0,
+  hospitality      NUMERIC(2,1) DEFAULT 5.0,
+  accuracy         NUMERIC(2,1) DEFAULT 5.0,
+  sound_lighting   NUMERIC(2,1) DEFAULT 5.0,
+  location_parking NUMERIC(2,1) DEFAULT 5.0,
+  value_for_money  NUMERIC(2,1) DEFAULT 5.0,
+  verified_stay    BOOLEAN NOT NULL DEFAULT true,
+  host_reply       TEXT,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_reviews_venue  ON reviews(venue_id);
+CREATE INDEX idx_reviews_rating ON reviews(rating);
+
+CREATE TRIGGER set_updated_at BEFORE UPDATE ON reviews
+  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+CREATE POLICY select_public_reviews ON reviews FOR SELECT USING (true);
+CREATE POLICY insert_reviews ON reviews FOR INSERT WITH CHECK (true);
+CREATE POLICY host_reply_reviews ON reviews FOR UPDATE USING (
+  EXISTS (SELECT 1 FROM venues WHERE venues.id = reviews.venue_id AND venues.owner_id = auth.uid())
+);
+
+-- ---------------------------------------------------------------------------
+-- MESSAGING & NOTIFICATIONS (Two-way chat between guest & host, real-time alerts)
+-- ---------------------------------------------------------------------------
+CREATE TABLE conversations (
+  id                 UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  venue_id           UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+  user_id            UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  user_name          TEXT NOT NULL,
+  owner_id           UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  owner_name         TEXT NOT NULL,
+  last_message       TEXT,
+  last_message_at    TIMESTAMPTZ DEFAULT now(),
+  unread_user_count  INTEGER DEFAULT 0,
+  unread_owner_count INTEGER DEFAULT 0,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_conversations_venue ON conversations(venue_id);
+CREATE INDEX idx_conversations_user  ON conversations(user_id);
+CREATE INDEX idx_conversations_owner ON conversations(owner_id);
+
+CREATE TABLE messages (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversation_id UUID NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+  venue_id        UUID NOT NULL REFERENCES venues(id) ON DELETE CASCADE,
+  sender_role     TEXT NOT NULL CHECK (sender_role IN ('user', 'owner', 'system')),
+  sender_id       TEXT,
+  sender_name     TEXT NOT NULL,
+  recipient_role  TEXT NOT NULL CHECK (recipient_role IN ('user', 'owner', 'all')),
+  recipient_id    TEXT,
+  content         TEXT NOT NULL,
+  read            BOOLEAN NOT NULL DEFAULT false,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_messages_conversation ON messages(conversation_id);
+CREATE INDEX idx_messages_sender       ON messages(sender_id);
+CREATE INDEX idx_messages_recipient    ON messages(recipient_id);
+
+CREATE TABLE notifications (
+  id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         TEXT,
+  target_role     TEXT NOT NULL DEFAULT 'all' CHECK (target_role IN ('user', 'owner', 'all')),
+  type            TEXT NOT NULL DEFAULT 'message' CHECK (type IN ('message', 'booking', 'review', 'system')),
+  title           TEXT NOT NULL,
+  message         TEXT NOT NULL,
+  venue_id        UUID REFERENCES venues(id) ON DELETE CASCADE,
+  venue_title     TEXT,
+  conversation_id UUID REFERENCES conversations(id) ON DELETE SET NULL,
+  read            BOOLEAN NOT NULL DEFAULT false,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_notifications_user   ON notifications(user_id);
+CREATE INDEX idx_notifications_unread ON notifications(read);

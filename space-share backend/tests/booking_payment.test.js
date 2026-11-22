@@ -269,8 +269,6 @@ async function run() {
     assert.strictEqual(ltCalls[0].args[0], 'hold_expires_at', 'lt() must target hold_expires_at');
   });
 
-<<<<<<< HEAD
-=======
   // ─── TEST 3 ────────────────────────────────────────────────────────
   // createBooking: If insert fails with Postgres code 23P01 (exclusion
   // constraint violation), must return 409 "Slot already booked" (not 500).
@@ -466,7 +464,6 @@ async function run() {
     assert.ok(hasRefundLog, 'Must log refund needed with booking ID');
   });
 
->>>>>>> origin/final_dev
   // ── Report ─────────────────────────────────────────────────────────
   console.log('\n=========================================');
   console.log('  Booking & Payment Security Tests');

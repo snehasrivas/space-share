@@ -4,6 +4,8 @@ const BASE = import.meta.env.VITE_API_URL || '/api'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
+export type Page = 'home' | 'browse' | 'detail' | 'checkout' | 'bookings' | 'host' | 'admin' | 'auth' | 'owner-bookings'
+
 export interface BackendVenue {
   id: string
   title: string
@@ -12,6 +14,7 @@ export interface BackendVenue {
   address: string
   city: string
   state: string
+  pincode?: string
   country: string
   capacity: number | null
   price_per_hour: number | null
@@ -34,11 +37,11 @@ export interface BackendBooking {
   start_time: string
   end_time: string
   total_amount: number
-  status: 'pending' | 'confirmed' | 'cancelled'
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'rejected'
   payment_status: 'unpaid' | 'paid' | 'refunded'
   hold_expires_at: string
   created_at: string
-  venues?: { id: string; name: string; title: string; address: string; city: string }
+  venues?: { id: string; name: string; title: string; address: string; city: string; capacity?: number | null; image_url?: string }
 }
 
 export interface AdminVerification {
@@ -56,6 +59,51 @@ export interface AdminVerification {
   created_at: string
   updated_at: string
   venues?: BackendVenue & { profiles?: { id: string; full_name: string; email: string; phone: string } }
+}
+
+export interface BackendConversation {
+  id: string
+  venue_id: string
+  venue_title: string
+  venue_city?: string
+  venue_image?: string
+  user_id: string
+  user_name: string
+  owner_id: string
+  owner_name: string
+  last_message?: string
+  last_message_at?: string
+  unread_user_count?: number
+  unread_owner_count?: number
+  created_at: string
+}
+
+export interface BackendChatMessage {
+  id: string
+  conversation_id: string
+  venue_id: string
+  sender_role: 'user' | 'owner' | 'system'
+  sender_id?: string
+  sender_name: string
+  recipient_role: 'user' | 'owner' | 'all'
+  recipient_id?: string
+  content: string
+  read: boolean
+  created_at: string
+}
+
+export interface BackendNotification {
+  id: string
+  user_id?: string
+  target_role: 'user' | 'owner' | 'all'
+  type: 'message' | 'booking' | 'review' | 'system'
+  title: string
+  message: string
+  venue_id?: string
+  venue_title?: string
+  conversation_id?: string
+  read: boolean
+  created_at: string
 }
 
 // ─── Core fetch wrapper ─────────────────────────────────────────────────────
@@ -199,4 +247,145 @@ export const api = {
       `/verifications/${id}/review`,
       { method: 'POST', body: JSON.stringify({ action, rejection_reason, admin_notes }) },
     ),
+
+  // ─── Reviews & Ratings APIs ────────────────────────────────────────────────
+
+  /** GET /venues/:id/reviews – fetch all ratings, statistics & organizer reviews */
+  getVenueReviews: (venueId: string, eventType?: string, sort?: string) => {
+    const params = new URLSearchParams()
+    if (eventType && eventType !== 'All') params.append('event_type', eventType)
+    if (sort) params.append('sort', sort)
+    const qs = params.toString() ? `?${params.toString()}` : ''
+    return req<{
+      venue_id: string
+      stats: {
+        average_rating: number
+        total_reviews: number
+        breakdown: {
+          cleanliness: number
+          hospitality: number
+          accuracy: number
+          sound_lighting: number
+          location_parking: number
+          value_for_money: number
+        }
+        distribution: Record<string, number>
+      }
+      reviews: Array<{
+        id: string
+        venue_id: string
+        author_name: string
+        author_city: string
+        rating: number
+        event_type: string
+        guest_count: number
+        comment: string
+        verified_stay: boolean
+        host_reply?: string
+        created_at: string
+      }>
+    }>(`/venues/${venueId}/reviews${qs}`)
+  },
+
+  /** POST /venues/:id/reviews – submit a new review and rating */
+  addVenueReview: (
+    venueId: string,
+    payload: {
+      rating: number
+      comment: string
+      author_name?: string
+      author_city?: string
+      event_type?: string
+      guest_count?: number
+      cleanliness?: number
+      hospitality?: number
+      accuracy?: number
+      sound_lighting?: number
+      location_parking?: number
+      value_for_money?: number
+    },
+  ) =>
+    req<{
+      review: {
+        id: string
+        venue_id: string
+        author_name: string
+        author_city: string
+        rating: number
+        event_type: string
+        guest_count: number
+        comment: string
+        verified_stay: boolean
+        created_at: string
+      }
+      stats: unknown
+    }>(`/venues/${venueId}/reviews`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  /** POST /venues/:id/reviews/:reviewId/reply – host response */
+  replyToReview: (venueId: string, reviewId: string, reply: string) =>
+    req<{ reviewId: string; host_reply: string }>(`/venues/${venueId}/reviews/${reviewId}/reply`, {
+      method: 'POST',
+      body: JSON.stringify({ reply }),
+    }),
+
+  // ─── Messaging & Real-Time Chat ──────────────────────────────────────────
+
+  /** GET /messages/conversations */
+  getConversations: (params?: { role?: string; venue_id?: string; user_id?: string }) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : ''
+    return req<{ conversations: BackendConversation[] }>(`/messages/conversations${qs}`)
+  },
+
+  /** GET /messages/conversations/:id (or by venue_id) */
+  getConversation: (idOrVenueId: string) =>
+    req<{ conversation: BackendConversation | null; messages: BackendChatMessage[] }>(
+      `/messages/conversations/${idOrVenueId}`,
+    ),
+
+  /** POST /messages – send message with automatic notification and simulated host reply */
+  sendMessage: (payload: {
+    conversation_id?: string
+    venue_id: string
+    venue_title?: string
+    venue_image?: string
+    venue_city?: string
+    content: string
+    sender_role?: 'user' | 'owner'
+    sender_name?: string
+    sender_id?: string
+    auto_reply?: boolean
+  }) =>
+    req<{
+      message: BackendChatMessage
+      conversation: BackendConversation
+      notification: BackendNotification
+      host_reply?: BackendChatMessage | null
+      host_notification?: BackendNotification | null
+    }>('/messages/messages', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // ─── Notifications Center ────────────────────────────────────────────────
+
+  /** GET /notifications */
+  getNotifications: (params?: { role?: string; user_id?: string }) => {
+    const qs = params ? '?' + new URLSearchParams(params as Record<string, string>).toString() : ''
+    return req<{ notifications: BackendNotification[]; unread_count: number }>(`/notifications${qs}`)
+  },
+
+  /** PATCH /notifications/:id/read */
+  markNotificationRead: (id: string) =>
+    req<{ notification: BackendNotification; unread_count: number }>(`/notifications/${id}/read`, {
+      method: 'PATCH',
+    }),
+
+  /** POST /notifications/read-all */
+  markAllNotificationsRead: () =>
+    req<{ unread_count: number }>('/notifications/read-all', {
+      method: 'POST',
+    }),
 }

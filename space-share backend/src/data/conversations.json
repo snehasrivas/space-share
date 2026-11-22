@@ -1,0 +1,50 @@
+[
+  {
+    "id": "conv_1795325905814_76noha",
+    "venue_id": "692d17e7-e044-48e5-ab15-b3eabb082e9e",
+    "venue_title": "Test Booking Venue",
+    "venue_city": "New Delhi",
+    "venue_image": "https://images.unsplash.com/photo-1469371670807-013ccf25f16a?auto=format&fit=crop&w=1200&q=85",
+    "user_id": "user_default",
+    "user_name": "Priya Sharma (Guest Organizer)",
+    "owner_id": "owner_rajesh",
+    "owner_name": "Rajesh Verma (Host)",
+    "last_message": "Namaste! Thank you for reaching out. Yes, we are available on that date and would love to host your celebration! How many guests are you expecting?",
+    "last_message_at": "2026-11-22T06:04:57.462Z",
+    "unread_user_count": 3,
+    "unread_owner_count": 3,
+    "created_at": "2026-11-22T05:38:25.814Z"
+  },
+  {
+    "id": "conv_glasshouse_01",
+    "venue_id": "1",
+    "venue_title": "The Glasshouse Estate",
+    "venue_city": "New Delhi",
+    "venue_image": "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80",
+    "user_id": "user_default",
+    "user_name": "Priya Sharma (Organizer)",
+    "owner_id": "owner_rajesh",
+    "owner_name": "Rajesh Verma (Host)",
+    "last_message": "Thanks for your message! You are welcome to visit for a walkthrough any day between 11 AM and 6 PM. Let us know what time works best for you.",
+    "last_message_at": "2026-11-22T06:16:56.754Z",
+    "unread_user_count": 5,
+    "unread_owner_count": 4,
+    "created_at": "2026-11-22T01:22:40.101Z"
+  },
+  {
+    "id": "conv_haveli_02",
+    "venue_id": "2",
+    "venue_title": "Royal Heritage Haveli",
+    "venue_city": "Jaipur",
+    "venue_image": "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+    "user_id": "user_default",
+    "user_name": "Priya Sharma (Organizer)",
+    "owner_id": "owner_ananya",
+    "owner_name": "Ananya Rathore (Host)",
+    "last_message": "We have reserved the Courtyard for your walkthrough this Saturday at 3 PM.",
+    "last_message_at": "2026-11-22T03:22:40.101Z",
+    "unread_user_count": 0,
+    "unread_owner_count": 0,
+    "created_at": "2026-11-21T05:22:40.101Z"
+  }
+]
